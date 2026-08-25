@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電費房租管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --ink:#1F2A24;
+    --paper:#EEF1EA;
+    --card:#FFFFFF;
+    --line:#D8DFD6;
+    --muted:#6B7570;
+    --amber:#E8A33D;
+    --amber-deep:#C97F1E;
+    --lcd-bg:#16221C;
+    --lcd-green:#7BE0A8;
+    --danger:#C1543B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:32px 16px 80px;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.12em;
+    color:var(--amber-deep);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:28px;
+    margin:0 0 4px;
+    letter-spacing:-.01em;
+  }
+  .sub{color:var(--muted);font-size:14px;margin:0;}
+
+  .month-bar{
+    display:flex;align-items:center;gap:12px;
+    margin:20px 0 24px;
+    flex-wrap:wrap;
+  }
+  .month-bar input[type=month]{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:var(--card);
+    color:var(--ink);
+  }
+  .month-bar .label{font-size:13px;color:var(--muted);}
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:16px;
+    margin:0 0 14px;
+  }
+
+  .room-grid{display:grid;gap:14px;}
+  .room-card{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px;
+    display:grid;
+    grid-template-columns:1fr 1.1fr;
+    gap:16px;
+    align-items:start;
+  }
+  @media (max-width:640px){
+    .room-card{grid-template-columns:1fr;}
+  }
+  .field-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .field-row:first-child{margin-top:0;}
+  .field-label{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;min-width:56px;}
+  .field-value{font-weight:600;font-size:15px;font-family:'IBM Plex Mono',monospace;}
+  .field-row input.reading-input{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    padding:6px 8px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    width:110px;
+  }
+  .paid-check{
+    display:flex;align-items:center;gap:5px;
+    font-size:12px;color:var(--muted);
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .paid-check input{margin:0;}
+  .paid-check input:disabled{opacity:.4;cursor:not-allowed;}
+
+  .msg-placeholder{color:#8FA398 !important;font-style:italic;}
+
+  .row-actions{display:flex;gap:8px;margin-top:10px;}
+  button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    border:none;
+    border-radius:7px;
+    padding:9px 14px;
+    cursor:pointer;
+    transition:transform .06s ease;
+  }
+  button:active{transform:scale(.97);}
+  .btn-primary{background:var(--ink);color:var(--paper);}
+  .btn-amber{background:var(--amber);color:#3A2705;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn-danger{background:transparent;border:1px solid var(--danger);color:var(--danger);}
+  .btn-sm{padding:6px 10px;font-size:12px;}
+
+  .add-room-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-bottom:16px;border-bottom:1px dashed var(--line);margin-bottom:16px;}
+  .add-room-form input[type=text],.add-room-form input[type=number]{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+  }
+  .add-room-form input[name=name]{width:110px;}
+  .add-room-form input[name=rent]{width:90px;}
+  .add-room-form input[name=base]{width:100px;}
+  .pos-check{
+    display:flex;align-items:center;gap:4px;
+    font-size:13px;color:var(--muted);
+    border:1px solid var(--line);border-radius:6px;
+    padding:6px 10px;cursor:pointer;
+  }
+  .pos-check input{margin:0;}
+  .pos-badge{
+    font-size:10px;font-family:'IBM Plex Mono',monospace;
+    background:var(--paper);border:1px solid var(--line);
+    border-radius:4px;padding:1px 6px;color:var(--muted);
+    margin-left:6px;
+  }
+
+  .msg-box{
+    background:var(--lcd-bg);
+    color:#E9F3EC;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    line-height:1.7;
+    padding:14px 16px;
+    border-radius:8px;
+    white-space:pre-wrap;
+    margin-top:10px;
+  }
+  .msg-head{display:flex;justify-content:space-between;align-items:center;margin-top:12px;margin-bottom:2px;gap:10px;flex-wrap:wrap;}
+  .msg-head .room-title{font-weight:600;font-size:14px;}
+  .copied-tag{font-size:11px;color:var(--lcd-green);font-family:'IBM Plex Mono',monospace;}
+
+  .history-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+  .history-table th,.history-table td{
+    text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .history-table th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em;}
+  .history-table td button, .summary-table td button{padding:4px 8px;font-size:11px;}
+  details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:4px;}
+
+  .summary-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .summary-table th,.summary-table td{
+    text-align:left;padding:8px;border-bottom:1px solid var(--line);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .summary-table th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em;}
+  .summary-table tr.total-row td{
+    font-weight:700;color:var(--amber-deep);border-top:2px solid var(--ink);border-bottom:none;
+  }
+  .summary-table td.num{text-align:right;}
+  .missing-tag{color:var(--danger);font-size:11px;}
+  .paid-tag{color:#3F8F5F;font-size:11px;font-weight:600;background:#E6F4EA;padding:2px 8px;border-radius:10px;}
+
+  .empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;}
+  .status{font-size:12px;color:var(--muted);margin-top:14px;text-align:center;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:22px;border-bottom:1px solid var(--line);}
+  .tab-btn{
+    background:transparent;border:none;border-radius:0;
+    padding:10px 4px;margin-right:18px;
+    font-family:'Space Grotesk',sans-serif;
+    font-size:15px;font-weight:600;color:var(--muted);
+    border-bottom:2px solid transparent;
+    cursor:pointer;
+  }
+  .tab-btn.active{color:var(--ink);border-bottom-color:var(--amber);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .tenant-table{width:100%;min-width:760px;border-collapse:collapse;table-layout:fixed;font-size:13px;}
+  .tenant-table th:nth-child(-n+6),.tenant-table td:nth-child(-n+6){width:calc((100% - 92px) / 6);}
+  .tenant-table th:last-child,.tenant-table td:last-child{width:92px;}
+  .tenant-table th,.tenant-table td{
+    text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);
+    vertical-align:middle;
+  }
+  .tenant-table th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;}
+  .tenant-table input{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    padding:6px 8px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    width:100%;
+  }
+  .tenant-table input.rate-input{
+    font-family:'IBM Plex Mono',monospace;
+    width:100%;
+  }
+  .tenant-table td.room-cell{font-family:'IBM Plex Mono',monospace;font-weight:600;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">房租 · 電費　管理台</div>
+    <h1>每月抄表結算</h1>
+    <p class="sub">輸入本月度數，自動算出電費與應付總額，並產生可直接貼到 LINE 的通知文字。</p>
+  </header>
+
+  <div class="panel" id="backupPanel">
+    <h2>資料備份</h2>
+    <p class="sub" style="margin-bottom:12px;">建議每次填完資料後匯出一份存在手機或電腦裡。如果哪天開啟工具發現資料不見了，用「匯入備份」就能救回來。</p>
+    <div class="row-actions">
+      <button type="button" class="btn-amber" id="exportBtn">匯出備份 (JSON)</button>
+      <button type="button" class="btn-ghost" id="importBtn">匯入備份</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
+    </div>
+    <div id="storageWarning" style="display:none;margin-top:12px;padding:10px 12px;background:#FBEAEA;border:1px solid var(--danger);border-radius:8px;color:var(--danger);font-size:13px;"></div>
+  </div>
+
+  <div class="tabs">
+    <button type="button" class="tab-btn active" data-tab="billing">本月帳單</button>
+    <button type="button" class="tab-btn" data-tab="tenants">房客資料管理</button>
+  </div>
+
+  <div id="tab-billing" class="tab-panel active">
+    <div class="month-bar">
+      <span class="label">結算月份</span>
+      <input type="month" id="monthPicker">
+    </div>
+
+    <div class="panel">
+      <h2>本月抄表</h2>
+      <form class="add-room-form" id="addRoomForm">
+        <input name="name" placeholder="樓層" required>
+        <label class="pos-check"><input type="checkbox" name="front"> 前</label>
+        <label class="pos-check"><input type="checkbox" name="back"> 後</label>
+        <input name="base" type="number" placeholder="起始度數（僅新房間需填）">
+        <button type="submit" class="btn-amber">新增房間</button>
+      </form>
+
+      <div id="roomGrid" class="room-grid"></div>
+      <div id="emptyState" class="empty" style="display:none;">尚未新增房間，請在上方新增第一間。</div>
+    </div>
+
+    <div class="panel" id="summaryPanel">
+      <h2>本月總表</h2>
+      <div id="summaryContent"></div>
+    </div>
+
+    <div class="panel">
+      <h2>歷史紀錄</h2>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <div id="tab-tenants" class="tab-panel">
+    <div class="panel">
+      <h2>房客資料管理</h2>
+      <p class="sub" style="margin-bottom:14px;">依「本月帳單」頁已建立的樓層，填寫房客姓名、租金與每度電費（未填則預設每度 4 元）。這裡也可以直接修改樓層名稱，異動會自動套用到帳單計算。</p>
+      <div id="tenantTableWrap"></div>
+    </div>
+  </div>
+
+  <div class="status" id="statusLine"></div>
+</div>
+
+<script>
+const KEY = 'billing-data';
+let data = { rooms: [], history: {} };
+let loaded = false;
+const FIREBASE_CONFIG = {
+  apiKey: '',
+  authDomain: '',
+  databaseURL: '',
+  projectId: '',
+  appId: ''
+};
+let firebaseDb = null;
+let firebaseListener = null;
+
+function thisMonthStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function monthLabel(m){
+  const [y,mo] = m.split('-');
+  return y + '年' + parseInt(mo,10) + '月';
+}
+function fmt(n){ return Number(n).toLocaleString('zh-Hant-TW'); }
+
+const LOCAL_KEY = 'billing-data-backup';
+let storageMode = 'unknown';
+
+async function connectFirebase(){
+  if(!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.databaseURL || !window.firebase) return false;
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    await firebase.auth().signInAnonymously();
+    firebaseDb = firebase.database();
+    return true;
+  }catch(e){
+    firebaseDb = null;
+    return false;
+  }
+}
+
+function watchFirebase(){
+  if(!firebaseDb || firebaseListener) return;
+  firebaseListener = firebaseDb.ref(KEY).on('value', snapshot => {
+    if(!snapshot.exists() || !snapshot.val() || !loaded) return;
+    data = snapshot.val();
+    ensureDefaultRooms();
+    render();
+  });
+}
+
+function ensureDefaultRooms(){
+  const defaultUnits = [
+    { name: '2樓' },
+    { name: '3樓', front: true },
+    { name: '3樓', back: true },
+    { name: '4樓', front: true },
+    { name: '4樓', back: true },
+    { name: '5樓', front: true },
+    { name: '5樓', back: true }
+  ];
+  if(!Array.isArray(data.rooms)) data.rooms = [];
+  if(!data.history || typeof data.history !== 'object') data.history = {};
+
+  defaultUnits.forEach(unit => {
+    const exists = data.rooms.some(room =>
+      unitKey(room.name, room.front, room.back) === unitKey(unit.name, unit.front, unit.back)
+    );
+    if(!exists){
+      data.rooms.push({
+        id: 'r_' + Date.now() + '_' + data.rooms.length,
+        name: unit.name,
+        rent: 0,
+        base: null,
+        front: !!unit.front,
+        back: !!unit.back
+      });
+    }
+  });
+}
+
+function showStorageWarning(msg){
+  const el = document.getElementById('storageWarning');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideStorageWarning(){
+  document.getElementById('storageWarning').style.display = 'none';
+}
+
+async function loadData(){
+  let gotFromCloud = false;
+  const firebaseReady = await connectFirebase();
+  if(firebaseReady){
+    try{
+      const snapshot = await firebaseDb.ref(KEY).once('value');
+      if(snapshot.exists() && snapshot.val()){
+        data = snapshot.val();
+        gotFromCloud = true;
+        storageMode = 'firebase';
+      }
+    }catch(e){ /* fall through to local storage */ }
+  }
+  try{
+    if(!gotFromCloud && window.storage){
+      const res = await window.storage.get(KEY, false);
+      if(res && res.value){
+        data = JSON.parse(res.value);
+        gotFromCloud = true;
+        storageMode = 'cloud';
+      }
+    }
+  }catch(e){ /* key not found yet, or storage unavailable — fall through */ }
+
+  if(!gotFromCloud){
+    try{
+      const local = localStorage.getItem(LOCAL_KEY);
+      if(local){
+        data = JSON.parse(local);
+        storageMode = window.storage ? 'cloud-empty-used-local' : 'local-only';
+        showStorageWarning('雲端儲存目前讀不到資料，已改用瀏覽器本機備份還原。建議立即按「匯出備份」存一份到手機/電腦，避免清除瀏覽器資料時遺失。');
+      } else if(!window.storage){
+        storageMode = 'none';
+      }
+    }catch(e){ /* localStorage also unavailable */ }
+  }
+
+  ensureDefaultRooms();
+  loaded = true;
+  render();
+  if(firebaseReady){
+    if(!gotFromCloud) await saveData();
+    watchFirebase();
+  }
+}
+
+async function saveData(){
+  let cloudOk = false;
+  try{
+    if(firebaseDb){
+      await firebaseDb.ref(KEY).set(data);
+      cloudOk = true;
+    }
+  }catch(e){ /* fall through to local storage */ }
+  try{
+    if(!cloudOk && window.storage){
+      const res = await window.storage.set(KEY, JSON.stringify(data), false);
+      if(res) cloudOk = true;
+    }
+  }catch(e){ /* fall through to local */ }
+
+  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }catch(e){ /* ignore */ }
+
+  if(cloudOk){
+    hideStorageWarning();
+  } else {
+    showStorageWarning('雲端儲存失敗，這次變更只存在此瀏覽器（本機備份）。請儘快按「匯出備份」把資料存成檔案，避免遺失。');
+  }
+}
+
+function exportBackup(){
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `電費房租備份_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setStatus('備份檔已下載，請存到手機或電腦裡。');
+}
+
+function importBackup(file){
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed || !Array.isArray(parsed.rooms)){
+        setStatus('這個檔案格式看起來不對，無法匯入。');
+        return;
+      }
+      if(!confirm('匯入備份會覆蓋目前畫面上的所有資料，確定要繼續嗎？')) return;
+      data = parsed;
+      await saveData();
+      setStatus('備份已匯入並儲存。');
+      render();
+    }catch(e){
+      setStatus('讀取備份檔失敗，請確認檔案內容正確。');
+    }
+  };
+  reader.readAsText(file);
+}
+function setStatus(t){
+  document.getElementById('statusLine').textContent = t || '';
+  if(t) setTimeout(()=>{ document.getElementById('statusLine').textContent=''; }, 2500);
+}
+
+function getLastReading(roomId, beforeMonth){
+  const h = (data.history[roomId] || []).filter(e => e.month < beforeMonth);
+  if(h.length === 0){
+    const room = data.rooms.find(r=>r.id===roomId);
+    return room && room.base != null ? Number(room.base) : null;
+  }
+  h.sort((a,b)=> a.month < b.month ? -1 : 1);
+  return h[h.length-1].reading;
+}
+function getEntryForMonth(roomId, month){
+  return (data.history[roomId] || []).find(e => e.month === month);
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+function getRate(room){
+  const r = Number(room.rate);
+  return r > 0 ? r : 4;
+}
+
+function unitKey(name, front, back){
+  return name + '|' + (front ? '前' : '') + (back ? '後' : '');
+}
+
+function render(){
+  if(!loaded) return;
+  const month = document.getElementById('monthPicker').value || thisMonthStr();
+  document.getElementById('monthPicker').value = month;
+
+  const grid = document.getElementById('roomGrid');
+  const empty = document.getElementById('emptyState');
+  grid.innerHTML = '';
+  const visibleRooms = data.rooms.filter(room => {
+    const e = getEntryForMonth(room.id, month);
+    return !(e && e.paid);
+  });
+  if(data.rooms.length === 0){
+    empty.textContent = '尚未新增房間，請在上方新增第一間。';
+    empty.style.display = 'block';
+  } else if(visibleRooms.length === 0){
+    empty.textContent = '本月所有房間都已付款 🎉';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    visibleRooms.forEach(room => {
+      grid.appendChild(renderRoomCard(room, month));
+    });
+  }
+  renderSummary(month);
+  renderHistory();
+  renderTenantTable();
+}
+
+function roomLabel(room){
+  const tag = (room.front ? '前' : '') + (room.back ? '後' : '');
+  return room.name + (tag ? `<span class="pos-badge">${tag}</span>` : '');
+}
+
+function renderSummary(month){
+  const el = document.getElementById('summaryContent');
+  if(data.rooms.length === 0){
+    el.innerHTML = '<div class="empty">尚無房間資料。</div>';
+    return;
+  }
+  let totalFee = 0, totalRent = 0, totalAll = 0, missing = 0, paidCount = 0;
+  const rows = data.rooms.map(room => {
+    const entry = getEntryForMonth(room.id, month);
+    if(!entry){
+      missing++;
+      return `<tr><td>${roomLabel(room)}</td><td class="num">－</td><td class="num">NT$ ${fmt(room.rent)}</td><td class="num"><span class="missing-tag">尚未抄表</span></td><td></td><td class="num"></td></tr>`;
+    }
+    totalFee += entry.fee; totalRent += entry.rent; totalAll += entry.total;
+    const status = entry.paid
+      ? `<span class="paid-tag">已付款</span> <button type="button" class="btn-ghost btn-sm" onclick="togglePaid('${room.id}','${month}')">取消</button>`
+      : `<span class="missing-tag">未付款</span>`;
+    return `<tr><td>${roomLabel(room)}</td><td class="num">NT$ ${fmt(entry.fee)}</td><td class="num">NT$ ${fmt(entry.rent)}</td><td class="num">NT$ ${fmt(entry.total)}</td><td>${status}</td><td class="num"><button type="button" class="btn-danger btn-sm" onclick="deleteHistoryEntry('${room.id}','${month}')">刪除</button></td></tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <table class="summary-table">
+      <tr><th>樓層</th><th>電費</th><th>租金</th><th>應付總額</th><th>狀態</th><th></th></tr>
+      ${rows}
+      <tr class="total-row"><td>合計${missing ? `（${missing} 間尚未抄表）` : ''}</td><td class="num">NT$ ${fmt(totalFee)}</td><td class="num">NT$ ${fmt(totalRent)}</td><td class="num">NT$ ${fmt(totalAll)}</td><td></td><td></td></tr>
+    </table>
+  `;
+}
+
+window.deleteHistoryEntry = async (roomId, month) => {
+  const room = data.rooms.find(r => r.id === roomId);
+  if(!confirm(`確定要刪除${room ? room.name : ''} ${month} 這筆紀錄嗎？`)) return;
+  data.history[roomId] = (data.history[roomId] || []).filter(e => e.month !== month);
+  await saveData();
+  setStatus('已刪除該筆紀錄。');
+  render();
+};
+
+window.togglePaid = async (roomId, month) => {
+  const entry = (data.history[roomId] || []).find(e => e.month === month);
+  if(!entry) return;
+  entry.paid = !entry.paid;
+  await saveData();
+  setStatus(entry.paid ? '已標記為已付款。' : '已取消已付款標記。');
+  render();
+};
+
+function renderTenantTable(){
+  const wrap = document.getElementById('tenantTableWrap');
+  if(data.rooms.length === 0){
+    wrap.innerHTML = '<div class="empty">尚未在「本月帳單」頁新增房間，請先新增房間後再填寫房客資料。</div>';
+    return;
+  }
+  const table = document.createElement('table');
+  table.className = 'tenant-table';
+  table.innerHTML = `
+    <tr><th>樓層</th><th>前／後</th><th>房客姓名</th><th>月租金</th><th>每度電費</th><th>起始度數</th><th></th></tr>
+  `;
+  data.rooms.forEach(room => {
+    const tr = document.createElement('tr');
+    const posTag = (room.front ? '前' : '') + (room.back ? '後' : '');
+    tr.innerHTML = `
+      <td><input type="text" class="floor-input" value="${room.name}"></td>
+      <td class="room-cell">${posTag ? `<span class="pos-badge">${posTag}</span>` : '－'}</td>
+      <td><input type="text" class="tenant-input" placeholder="房客姓名" value="${room.tenantName ?? ''}"></td>
+      <td><input type="number" class="rate-input" placeholder="租金" value="${room.rent || ''}"> 元</td>
+      <td><input type="number" class="rate-input" placeholder="4" value="${room.rate ?? ''}"> 元/度</td>
+      <td><input type="number" class="rate-input base-input" placeholder="起始度數" value="${room.base ?? ''}"></td>
+      <td><button type="button" class="btn-primary btn-sm save-tenant-btn">儲存</button></td>
+    `;
+    const floorInput = tr.querySelector('.floor-input');
+    const tenantInput = tr.querySelector('.tenant-input');
+    const [rentInput, elecRateInput, baseInput] = tr.querySelectorAll('.rate-input');
+    const saveBtn = tr.querySelector('.save-tenant-btn');
+
+    saveBtn.addEventListener('click', async () => {
+      const newFloor = floorInput.value.trim();
+      if(!newFloor){ setStatus('樓層不能空白。'); return; }
+      if(newFloor !== room.name && data.rooms.some(r => r.name === newFloor)){
+        setStatus(`「${newFloor}」已經是另一筆資料的樓層，請改用其他名稱。`);
+        return;
+      }
+      room.name = newFloor;
+      room.tenantName = tenantInput.value.trim();
+      room.rent = rentInput.value === '' ? 0 : Number(rentInput.value);
+      room.rate = elecRateInput.value === '' ? null : Number(elecRateInput.value);
+      room.base = baseInput.value === '' ? null : Number(baseInput.value);
+      await saveData();
+      setStatus(newFloor + ' 的房客資料已儲存。');
+      render();
+    });
+
+    table.appendChild(tr);
+  });
+  wrap.innerHTML = '';
+  wrap.appendChild(table);
+}
+
+function renderRoomCard(room, month){
+  const card = document.createElement('div');
+  card.className = 'room-card';
+
+  const lastReading = getLastReading(room.id, month);
+  const existing = getEntryForMonth(room.id, month);
+  const inputVal = existing ? existing.reading : '';
+
+  const left = document.createElement('div');
+  left.innerHTML = `
+    <div class="field-row">
+      <span class="field-label">樓層</span><span class="field-value">${room.name}</span>
+      ${room.front ? '<span class="pos-badge">前</span>' : ''}${room.back ? '<span class="pos-badge">後</span>' : ''}
+    </div>
+    ${room.tenantName ? `
+    <div class="field-row">
+      <span class="field-label">房客</span><span class="field-value" style="font-family:'Inter',sans-serif;">${room.tenantName}</span>
+    </div>` : ''}
+    <div class="field-row">
+      <span class="field-label">租金</span><span class="field-value">${room.rent ? 'NT$ ' + fmt(room.rent) : '尚未設定'}</span>
+      ${room.rent ? '' : '<span class="missing-tag">請到房客資料管理設定</span>'}
+    </div>
+    <div class="field-row">
+      <span class="field-label">上次度數</span><span class="field-value">${lastReading===null ? '尚未設定' : fmt(lastReading)}</span>
+    </div>
+    <div class="field-row">
+      <span class="field-label">本月度數</span>
+      <input type="number" class="reading-input" placeholder="${lastReading===null ? '請先設定起始度數' : ''}" value="${inputVal}">
+    </div>
+    <div class="row-actions">
+      <button type="button" class="btn-primary btn-sm save-btn">儲存本月度數</button>
+      <button type="button" class="btn-ghost btn-sm edit-room-btn">編輯房間</button>
+      <button type="button" class="btn-danger btn-sm del-room-btn">刪除房間</button>
+    </div>
+  `;
+
+  const right = document.createElement('div');
+  right.innerHTML = `
+    <div class="msg-head">
+      <span class="room-title">通知訊息</span>
+      <label class="paid-check">
+        <input type="checkbox" class="paid-checkbox" ${existing && existing.paid ? 'checked' : ''} ${existing ? '' : 'disabled'}>
+        已付款
+      </label>
+      <button type="button" class="btn-ghost btn-sm copy-btn" disabled>複製訊息</button>
+    </div>
+    <div class="msg-box msg-placeholder">輸入本月度數後，這裡會自動產生通知訊息。</div>
+  `;
+
+  const input = left.querySelector('.reading-input');
+  const msgBox = right.querySelector('.msg-box');
+  const copyBtn = right.querySelector('.copy-btn');
+  let currentText = '';
+
+  function updateMessage(){
+    const v = input.value === '' ? null : Number(input.value);
+    if(v === null || lastReading === null || isNaN(v)){
+      msgBox.textContent = lastReading === null
+        ? '請先點「編輯房間」設定起始度數。'
+        : '輸入本月度數後，這裡會自動產生通知訊息。';
+      msgBox.classList.add('msg-placeholder');
+      copyBtn.disabled = true;
+      currentText = '';
+      return;
+    }
+    const usage = v - lastReading;
+    const rate = getRate(room);
+    const fee = usage * rate;
+    const total = fee + Number(room.rent);
+    currentText = buildMessage(room, month, { reading: v, fee, rate, rent: Number(room.rent), total });
+    msgBox.textContent = currentText;
+    msgBox.classList.remove('msg-placeholder');
+    copyBtn.disabled = false;
+  }
+  input.addEventListener('input', updateMessage);
+  updateMessage();
+
+  copyBtn.addEventListener('click', () => {
+    if(!currentText) return;
+    navigator.clipboard.writeText(currentText).then(() => {
+      setStatus(room.name + ' 的訊息已複製，可直接貼到 LINE。');
+    }).catch(()=> setStatus('複製失敗，請手動選取文字。'));
+  });
+
+  const paidCheckbox = right.querySelector('.paid-checkbox');
+  paidCheckbox.addEventListener('change', async () => {
+    if(!existing) return;
+    existing.paid = paidCheckbox.checked;
+    await saveData();
+    setStatus(room.name + (paidCheckbox.checked ? ' 已標記為已付款。' : ' 已取消已付款標記。'));
+    render();
+  });
+  left.querySelector('.save-btn').addEventListener('click', async () => {
+    const v = Number(input.value);
+    if(input.value === '' || isNaN(v)){ setStatus('請先輸入本月度數。'); return; }
+    if(lastReading === null){ setStatus('請先點「編輯房間」設定起始度數。'); return; }
+    const usage = v - lastReading;
+    const rate = getRate(room);
+    const fee = usage * rate;
+    const total = fee + Number(room.rent);
+    if(!data.history[room.id]) data.history[room.id] = [];
+    const idx = data.history[room.id].findIndex(e => e.month === month);
+    const entry = { month, reading: v, fee, rate, rent: Number(room.rent), total, savedAt: new Date().toISOString() };
+    if(idx >= 0) data.history[room.id][idx] = entry; else data.history[room.id].push(entry);
+    await saveData();
+    setStatus(room.name + ' 已儲存本月度數。');
+    render();
+  });
+
+  left.querySelector('.edit-room-btn').addEventListener('click', async () => {
+    const newName = prompt('樓層', room.name);
+    if(newName === null) return;
+    const trimmedName = newName.trim() || room.name;
+    const newBase = prompt('起始度數（此房間目前無歷史紀錄，或需修正時填寫；有歷史紀錄後會自動帶入上月結束度數，通常不用改這裡）', room.base ?? '');
+    const curTag = (room.front ? '前' : '') + (room.back ? '後' : '');
+    const newTag = prompt('位置標記：輸入「前」、「後」、「前後」，或留空表示不標記', curTag);
+    const newFront = newTag !== null ? newTag.includes('前') : room.front;
+    const newBack = newTag !== null ? newTag.includes('後') : room.back;
+
+    if(unitKey(trimmedName, newFront, newBack) !== unitKey(room.name, room.front, room.back)
+       && data.rooms.some(r => r.id !== room.id && unitKey(r.name, r.front, r.back) === unitKey(trimmedName, newFront, newBack))){
+      setStatus(`「${trimmedName}${newFront?'前':''}${newBack?'後':''}」已經是另一筆資料，請改用其他樓層或位置標記。`);
+      return;
+    }
+
+    room.name = trimmedName;
+    room.base = newBase === '' ? room.base : Number(newBase);
+    room.front = newFront;
+    room.back = newBack;
+    await saveData();
+    render();
+  });
+
+  left.querySelector('.del-room-btn').addEventListener('click', async () => {
+    if(!confirm('確定要刪除「' + room.name + '」嗎？歷史紀錄也會一併刪除。')) return;
+    data.rooms = data.rooms.filter(r => r.id !== room.id);
+    delete data.history[room.id];
+    await saveData();
+    render();
+  });
+
+  card.appendChild(left);
+  card.appendChild(right);
+  return card;
+}
+
+function buildMessage(room, month, entry){
+  const rate = entry.rate || getRate(room);
+  const lastReading = entry.reading - (entry.fee/rate);
+  return `【房租電費通知】\n${monthLabel(month)}\n本月電費：(${fmt(entry.reading)} － ${fmt(lastReading)}) × ${rate} ＝ ${fmt(entry.fee)} 元\n應付總額：${fmt(entry.rent)} ＋ ${fmt(entry.fee)} ＝ ${fmt(entry.total)} 元\n匯款完請告知帳號的「後5碼」，以利核對，謝謝。`;
+}
+
+function renderHistory(){
+  const wrap = document.getElementById('historyList');
+  wrap.innerHTML = '';
+  if(data.rooms.length === 0){
+    wrap.innerHTML = '<div class="empty">尚無資料。</div>';
+    return;
+  }
+  data.rooms.forEach(room => {
+    const h = (data.history[room.id] || []).slice().sort((a,b)=> a.month < b.month ? 1 : -1);
+    const det = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.innerHTML = `${roomLabel(room)}（共 ${h.length} 筆紀錄）`;
+    det.appendChild(summary);
+    if(h.length){
+      const table = document.createElement('table');
+      table.className = 'history-table';
+      table.innerHTML = `
+        <tr><th>月份</th><th>度數</th><th>電費</th><th>租金</th><th>總額</th><th></th></tr>
+        ${h.map(e => `<tr><td>${e.month}</td><td>${fmt(e.reading)}</td><td>${fmt(e.fee)}</td><td>${fmt(e.rent)}</td><td>${fmt(e.total)}</td><td><button type="button" class="btn-danger btn-sm" onclick="deleteHistoryEntry('${room.id}','${e.month}')">刪除</button></td></tr>`).join('')}
+      `;
+      det.appendChild(table);
+    } else {
+      const p = document.createElement('div');
+      p.className = 'empty';
+      p.textContent = '尚無紀錄。';
+      det.appendChild(p);
+    }
+    wrap.appendChild(det);
+  });
+}
+
+document.getElementById('addRoomForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const name = fd.get('name').trim();
+  const base = fd.get('base') === '' ? null : Number(fd.get('base'));
+  const front = fd.get('front') === 'on';
+  const back = fd.get('back') === 'on';
+  if(!name){ setStatus('請填寫樓層。'); return; }
+
+  const dup = data.rooms.find(r => unitKey(r.name, r.front, r.back) === unitKey(name, front, back));
+  if(dup){
+    setStatus(`「${name}${front?'前':''}${back?'後':''}」已經存在，不會重複新增，房客資料與歷史紀錄仍會保留在原本那筆。`);
+    e.target.reset();
+    return;
+  }
+
+  data.rooms.push({ id: 'r_' + Date.now(), name, rent: 0, base, front, back });
+  await saveData();
+  e.target.reset();
+  setStatus(name + ' 已新增，請到「房客資料管理」設定租金。');
+  render();
+});
+
+document.getElementById('exportBtn').addEventListener('click', exportBackup);
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(file) importBackup(file);
+  e.target.value = '';
+});
+
+document.getElementById('monthPicker').addEventListener('change', render);
+document.getElementById('monthPicker').value = thisMonthStr();
+
+loadData();
+</script>
+</body>
+</html>
